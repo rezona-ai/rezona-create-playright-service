@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# coverage / test output
+coverage/
+.nyc_output/
+
+# build output
+dist/
+build/
+out/
+.next/
+
+# cache / temp
+.cache/
+.tmp/
+tmp/
+*.tsbuildinfo
+
+# system files
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
