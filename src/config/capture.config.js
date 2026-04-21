@@ -28,6 +28,14 @@ const DEFAULT_CAPTURE_MAX_QUEUE = 50;
 // 默认排队等待超时（毫秒）
 const DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS = 10000;
 
+// 本地截图文件 TTL（毫秒）：超过此时长的残留文件将被兜底清理
+const SCREENSHOT_TTL_MS = Number(process.env.SCREENSHOT_TTL_MS || 30 * 60 * 1000);
+
+// 清理任务扫描周期（毫秒）
+const SCREENSHOT_CLEANUP_INTERVAL_MS = Number(
+  process.env.SCREENSHOT_CLEANUP_INTERVAL_MS || 5 * 60 * 1000
+);
+
 // 设备预设：当请求未完整传入终端参数时使用
 const DEVICE_PRESETS = {
   pc: {
@@ -65,6 +73,8 @@ module.exports = {
   DEFAULT_CAPTURE_CONCURRENCY,
   DEFAULT_CAPTURE_MAX_QUEUE,
   DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS,
+  SCREENSHOT_TTL_MS,
+  SCREENSHOT_CLEANUP_INTERVAL_MS,
   DEVICE_PRESETS,
   ensureScreenshotDir
 };

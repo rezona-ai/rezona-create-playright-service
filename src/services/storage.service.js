@@ -157,6 +157,12 @@ async function uploadToOss(localPath, fileName) {
     throw new Error(`上传文件失败: status=${response.status}${detail ? ` body=${detail}` : ""}`);
   }
 
+  // 上传成功后异步删除本地源文件：OSS 对象是永久资产，本地 PNG 仅为中转产物。
+  // 失败不抛出，有定时清理兜底。
+  fs.unlink(localPath).catch((err) => {
+    console.warn(`[cleanup] remove local file failed: ${localPath} ${err.message}`);
+  });
+
   const url = stripQuery(presignedUrl);
   return {
     objectKey: parseObjectKey(url),

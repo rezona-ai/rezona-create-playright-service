@@ -1,0 +1,36 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# VCS / IDE
+.git
+.gitignore
+.idea/
+.vscode/
+.claude/
+
+# dependencies / build artifacts (rebuilt inside container)
+node_modules/
+coverage/
+.nyc_output/
+dist/
+build/
+
+# runtime artifacts
+screenshots/
+
+# logs / tmp
+*.log
+logs/
+.cache/
+.tmp/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# docs / dev helpers
+README.md
+scripts/
