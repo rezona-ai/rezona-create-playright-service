@@ -68,11 +68,13 @@ async function createScreenshot(req, res, next) {
         readySelector: captureOptions.readySelector,
         targetUrl,
         fileName: captureResult.fileName,
-        localPath: captureResult.localPath,
-        // storage=oss 时本地文件已被立即清理，避免返回指向已删文件的误导链接
+        // storage=oss 时本地文件已立即清理，localPath 置 null 避免泄露容器内部路径；
+        // previewUrl 在 OSS 模式下返回 OSS 公网 URL，保持 "可直接预览" 的契约语义，
+        // 避免强迫老调用方按 storage 字段分支切换渲染路径
+        localPath: storage === "oss" ? null : captureResult.localPath,
         previewUrl:
           storage === "oss"
-            ? null
+            ? ossData?.url || null
             : `${getBaseUrl(req)}${captureResult.publicPath}`,
         imageWidth: captureResult.imageSize?.width || null,
         imageHeight: captureResult.imageSize?.height || null,

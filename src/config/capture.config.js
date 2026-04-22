@@ -28,12 +28,38 @@ const DEFAULT_CAPTURE_MAX_QUEUE = 50;
 // 默认排队等待超时（毫秒）
 const DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS = 10000;
 
-// 本地截图文件 TTL（毫秒）：超过此时长的残留文件将被兜底清理
-const SCREENSHOT_TTL_MS = Number(process.env.SCREENSHOT_TTL_MS || 30 * 60 * 1000);
+// Node setTimeout/setInterval 的 32-bit 有符号整数上限（~24.8 天）。超过该值
+// 会触发 TimeoutOverflowWarning 并被夹成 1ms，直接退化为忙循环。
+const NODE_TIMER_MAX_MS = 2_147_483_647;
+
+// 解析正整数毫秒配置；非法值（NaN / 超出 [min, max] 区间）回退到 fallback，
+// 避免 0ms 扫描循环、立即清空新截图、或 interval 溢出忙循环等灾难性行为。
+function parsePositiveIntMs(
+  raw,
+  fallback,
+  { min = 1000, max = NODE_TIMER_MAX_MS } = {}
+) {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return fallback;
+  return Math.floor(parsed);
+}
+
+// 本地截图文件 TTL（毫秒）：超过此时长的残留文件将被兜底清理。
+// 下限 60s：必须大于 OSS 签名 (默认 10s) + 上传 PUT (默认 30s) + 余量，
+// 否则 cleanup 会与仍在上传的新截图竞争，导致 uploadToOss 读取时 ENOENT。
+const SCREENSHOT_TTL_MS = parsePositiveIntMs(
+  process.env.SCREENSHOT_TTL_MS,
+  30 * 60 * 1000,
+  { min: 60 * 1000 }
+);
 
 // 清理任务扫描周期（毫秒）
-const SCREENSHOT_CLEANUP_INTERVAL_MS = Number(
-  process.env.SCREENSHOT_CLEANUP_INTERVAL_MS || 5 * 60 * 1000
+// 下限 10s：避免近似忙循环占用 I/O。
+// 上限保持 NODE_TIMER_MAX_MS：超限回退到默认值，防止定时器溢出退化为 1ms。
+const SCREENSHOT_CLEANUP_INTERVAL_MS = parsePositiveIntMs(
+  process.env.SCREENSHOT_CLEANUP_INTERVAL_MS,
+  5 * 60 * 1000,
+  { min: 10 * 1000 }
 );
 
 // 设备预设：当请求未完整传入终端参数时使用

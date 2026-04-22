@@ -158,9 +158,13 @@ async function uploadToOss(localPath, fileName) {
   }
 
   // 上传成功后异步删除本地源文件：OSS 对象是永久资产，本地 PNG 仅为中转产物。
-  // 失败不抛出，有定时清理兜底。
+  // 失败不抛出，有定时清理兜底。结构化日志便于容器日志系统按字段过滤/告警。
   fs.unlink(localPath).catch((err) => {
-    console.warn(`[cleanup] remove local file failed: ${localPath} ${err.message}`);
+    // ENOENT 说明 cleanup 定时任务已先删除，属正常竞争，无需告警
+    if (err && err.code === "ENOENT") return;
+    console.warn(
+      `[cleanup] scope=post-upload action=unlink path=${localPath} code=${err && err.code ? err.code : "UNKNOWN"} message=${err && err.message ? err.message : ""}`
+    );
   });
 
   const url = stripQuery(presignedUrl);
