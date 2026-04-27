@@ -1,8 +1,5 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const {
-  SCREENSHOT_DIR,
   DEFAULT_NAVIGATION_TIMEOUT,
   DEFAULT_READY_TIMEOUT,
   DEFAULT_SCREENSHOT_TIMEOUT,
@@ -10,7 +7,7 @@ const {
   DEFAULT_CAPTURE_MAX_QUEUE,
   DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS
 } = require("../config/capture.config");
-const { readPngDimensionsFromFile } = require("../utils/png.util");
+const { readPngDimensionsFromBuffer } = require("../utils/png.util");
 
 // Browser 级单例：同一 Node 进程内复用 Chromium，避免每次冷启动
 let browserPromise = null;
@@ -67,6 +64,18 @@ function resolveCaptureQueueWaitTimeout() {
     DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS,
     { min: 100, max: 600000 }
   );
+}
+
+function resolveConsoleLogLimit() {
+  return resolveBoundedEnvInt("CAPTURE_CONSOLE_LOG_LIMIT", 3000, {
+    min: 100,
+    max: 100000
+  });
+}
+
+function readConsoleText(message) {
+  if (!message || typeof message.text !== "function") return "";
+  return message.text();
 }
 
 async function acquireCaptureSlot() {
@@ -242,7 +251,7 @@ async function waitCaptureReady(page, { readySelector }) {
   });
 }
 
-async function captureByCdp(page, localPath) {
+async function captureByCdp(page) {
   const context = page.context();
   const cdpSession = await context.newCDPSession(page);
   try {
@@ -251,13 +260,13 @@ async function captureByCdp(page, localPath) {
       fromSurface: true,
       captureBeyondViewport: false
     });
-    fs.writeFileSync(localPath, result.data, "base64");
+    return Buffer.from(result.data, "base64");
   } finally {
     await cdpSession.detach().catch(() => undefined);
   }
 }
 
-async function takeScreenshot(page, localPath) {
+async function takeScreenshot(page) {
   const screenshotTimeout = resolveBoundedEnvInt(
     "CAPTURE_SCREENSHOT_TIMEOUT",
     DEFAULT_SCREENSHOT_TIMEOUT
@@ -267,16 +276,14 @@ async function takeScreenshot(page, localPath) {
   // 优先 CDP 直出，失败再回退 Playwright screenshot
   if (engine === "cdp") {
     try {
-      await captureByCdp(page, localPath);
-      return;
+      return await captureByCdp(page);
     } catch {
       // fallback to Playwright screenshot
     }
   }
 
   try {
-    await page.screenshot({
-      path: localPath,
+    return await page.screenshot({
       type: "png",
       scale: "css",
       timeout: screenshotTimeout
@@ -285,7 +292,7 @@ async function takeScreenshot(page, localPath) {
     if (!isTimeoutError(error)) {
       throw error;
     }
-    await captureByCdp(page, localPath);
+    return await captureByCdp(page);
   }
 }
 
@@ -307,6 +314,8 @@ async function captureCover({
     "CAPTURE_NAVIGATION_TIMEOUT",
     DEFAULT_NAVIGATION_TIMEOUT
   );
+  const consoleLogLimit = resolveConsoleLogLimit();
+  const consoleLogs = [];
 
   let context;
 
@@ -323,6 +332,15 @@ async function captureCover({
     });
 
     const page = await context.newPage();
+    page.on("console", (message) => {
+      if (consoleLogs.length >= consoleLogLimit) return;
+      try {
+        consoleLogs.push(readConsoleText(message));
+      } catch {
+        // 日志采集失败不应影响截图主流程
+      }
+    });
+
     await page.goto(targetUrl, {
       waitUntil: "domcontentloaded",
       timeout: navigationTimeout
@@ -335,14 +353,13 @@ async function captureCover({
     }
 
     const fileName = `cover-${device}-${width}x${height}-${Date.now()}-${randomUUID()}.png`;
-    const localPath = path.join(SCREENSHOT_DIR, fileName);
-    await takeScreenshot(page, localPath);
+    const imageBuffer = await takeScreenshot(page);
 
     return {
       fileName,
-      localPath,
-      publicPath: `/screenshots/${fileName}`,
-      imageSize: readPngDimensionsFromFile(localPath)
+      imageBuffer,
+      imageSize: readPngDimensionsFromBuffer(imageBuffer),
+      consoleLogs
     };
   } finally {
     if (context) {
