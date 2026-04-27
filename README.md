@@ -2,7 +2,7 @@
 
 ## 1. 服务概览
 
-- **用途**：对指定网页 URL 进行截图，并返回本地访问地址或 OSS 地址。
+- **用途**：对指定网页 URL 进行截图，并返回截图元信息与（可选）OSS 地址。
 - **基地址**：`http://<host>:<port>`
 - **推荐接口**：`POST /covers/screenshot`
 
@@ -62,20 +62,11 @@ curl -X POST "http://localhost:3000/covers/screenshot" \
   "code": 0,
   "message": "截图成功",
   "data": {
-    "storage": "local",
-    "device": "mobile",
-    "width": 430,
-    "height": 870,
-    "waitMs": 1200,
-    "readySelector": "canvas",
-    "targetUrl": "https://...",
-    "fileName": "cover-mobile-430x870-xxx.png",
-    "localPath": "/abs/path/screenshots/cover-xxx.png",
-    "previewUrl": "http://localhost:3000/screenshots/cover-xxx.png",
-    "imageWidth": 430,
-    "imageHeight": 870,
-    "ossObjectKey": null,
-    "ossUrl": null
+    "previewUrl": null,
+    "logs": [
+      "game init",
+      "assets loaded"
+    ]
   }
 }
 ```
@@ -139,7 +130,26 @@ curl -X POST "http://localhost:3000/covers/screenshot" \
 - 对 `429` 做重试（指数退避）。
 - 尽量传稳定、可预测的 `readySelector`。
 - 高并发调用建议批次化，避免瞬时洪峰。
-- 生产环境建议配置固定 `BASE_URL`，保证 `previewUrl` 可被外部访问。
+
+---
+
+## 9.1 控制台日志采集（新增）
+
+- 服务会在截图过程中采集页面 `console` 日志（`log/info/warn/error/debug` 等）。
+- 成功响应的 `data` 中会直接返回 `logs` 数组，不再写入本地 `log/` 目录。
+- 为避免影响截图耗时，日志在截图流程内实时采集到内存，截图完成后直接随响应返回，不追加额外等待步骤。
+- 成功响应 `data` 仅保留 `previewUrl` 与 `logs` 两个字段。
+- 可通过 `CAPTURE_CONSOLE_LOG_LIMIT` 控制单次最多采集日志条数（默认 `3000`）。
+- 截图结果不再落盘到 `screenshots/`。
+
+返回结构示例：
+
+```json
+{
+  "previewUrl": null,
+  "logs": ["game init", "assets loaded", "render complete"]
+}
+```
 
 ---
 

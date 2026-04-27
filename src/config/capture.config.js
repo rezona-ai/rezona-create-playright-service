@@ -1,7 +1,6 @@
-const fs = require("node:fs");
 const path = require("node:path");
 
-// 本地截图输出目录（HTTP 层会将该目录映射为可访问静态资源）
+// 截图临时目录（仅供清理任务扫描遗留文件，正常流程不再落盘）
 const SCREENSHOT_DIR = path.resolve(__dirname, "../../screenshots");
 
 // 默认目标页（未传 targetUrl 时兜底）
@@ -84,11 +83,6 @@ const DEVICE_PRESETS = {
   }
 };
 
-function ensureScreenshotDir() {
-  // 启动时确保截图目录存在
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-}
-
 module.exports = {
   SCREENSHOT_DIR,
   DEFAULT_TARGET_URL,
@@ -101,6 +95,5 @@ module.exports = {
   DEFAULT_CAPTURE_QUEUE_WAIT_TIMEOUT_MS,
   SCREENSHOT_TTL_MS,
   SCREENSHOT_CLEANUP_INTERVAL_MS,
-  DEVICE_PRESETS,
-  ensureScreenshotDir
+  DEVICE_PRESETS
 };
