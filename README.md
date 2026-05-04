@@ -63,6 +63,7 @@ curl -X POST "http://localhost:3000/covers/screenshot" \
   "message": "截图成功",
   "data": {
     "previewUrl": null,
+    "ossUrl": null,
     "logs": [
       "game init",
       "assets loaded"

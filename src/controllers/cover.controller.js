@@ -61,6 +61,7 @@ async function createScreenshot(req, res, next) {
       data: {
         // 不再落盘本地截图，previewUrl 仅在 OSS 模式下提供公网地址
         previewUrl: storage === "oss" ? ossData?.url || null : null,
+        ossUrl: ossData?.url || null,
         logs: captureResult.consoleLogs || []
       }
     });
