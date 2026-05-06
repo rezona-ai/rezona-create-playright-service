@@ -18,7 +18,12 @@
 - **Method**：`POST`
 - **Content-Type**：`application/json`
 
-### 2.2 请求参数
+### 2.2 健康检查
+
+- `GET /healthz`：返回服务运行时状态（不触发 Playwright 调用）
+- `GET /healthz/capture`：截图链路探活（会校验 browser/context/page 基础可用性）
+
+### 2.3 请求参数
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 |---|---|---:|---|---|
@@ -81,6 +86,9 @@ curl -X POST "http://localhost:3000/covers/screenshot" \
 | 400 | 400 | 参数错误（如 `targetUrl`/`storage`/`device` 非法） |
 | 429 | 42901 | 并发槽位已满且队列已满（任务过多） |
 | 429 | 42902 | 排队超时 |
+| 503 | 50301 | 服务排空中（重部署/优雅停机） |
+| 504 | 50401 | 截图流程硬超时 |
+| 504 | 50402 | 阶段超时（如 `newContext`/`screenshot`） |
 | 500 | 500 | 导航/渲染/截图等内部异常 |
 
 ---
@@ -100,8 +108,16 @@ curl -X POST "http://localhost:3000/covers/screenshot" \
 - `CAPTURE_MAX_CONCURRENCY=7`（同一时刻最多 7 个截图执行）
 - `CAPTURE_MAX_QUEUE=50`（最多 50 个排队）
 - `CAPTURE_QUEUE_WAIT_TIMEOUT_MS=10000`（排队超时 10 秒）
+- `CAPTURE_HARD_TIMEOUT_MS=60000`（单请求硬超时）
+- `CAPTURE_STAGE_TIMEOUT_MS=20000`（单阶段超时）
 
 > 超过能力会返回 `42901/42902`，调用方建议重试（指数退避 + 抖动）。
+
+浏览器自愈与回收策略（默认）：
+
+- `CAPTURE_BROWSER_TIMEOUT_THRESHOLD=3`：连续阶段超时达到阈值后重建 browser
+- `CAPTURE_BROWSER_RECYCLE_EVERY=500`：每处理 500 次截图后重建 browser
+- `CAPTURE_BROWSER_MAX_AGE_MS=1800000`：browser 运行超过 30 分钟后重建
 
 ---
 

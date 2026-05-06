@@ -1,5 +1,9 @@
 const { DEFAULT_TARGET_URL } = require("../config/capture.config");
-const { captureCover } = require("../services/capture.service");
+const {
+  captureCover,
+  checkCaptureRuntime,
+  getCaptureRuntimeState
+} = require("../services/capture.service");
 const { uploadToOss } = require("../services/storage.service");
 const { resolveCaptureOptions } = require("../utils/capture-options.util");
 const { createHttpError } = require("../utils/http-error.util");
@@ -59,7 +63,6 @@ async function createScreenshot(req, res, next) {
       code: 0,
       message: "截图成功",
       data: {
-        // 不再落盘本地截图，previewUrl 仅在 OSS 模式下提供公网地址
         previewUrl: storage === "oss" ? ossData?.url || null : null,
         ossUrl: ossData?.url || null,
         logs: captureResult.consoleLogs || []
@@ -96,7 +99,30 @@ function renderCoverPreview(req, res, next) {
   );
 }
 
+function getCaptureRuntimeStateView(req, res) {
+  return res.json({
+    code: 0,
+    message: "ok",
+    data: getCaptureRuntimeState()
+  });
+}
+
+async function getCaptureHealth(req, res, next) {
+  try {
+    const state = await checkCaptureRuntime();
+    return res.json({
+      code: 0,
+      message: "ok",
+      data: state
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createScreenshot,
-  renderCoverPreview
+  renderCoverPreview,
+  getCaptureHealth,
+  getCaptureRuntimeStateView
 };
